@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import CalculatorButton from './Button';
@@ -241,25 +240,17 @@ const Calculator: React.FC = () => {
     }
   };
   
-  const scientificButtons = [
-    ['sin', 'cos', 'tan', angleMode === 'deg' ? 'Rad' : 'Deg'],
-    ['sin-1', 'cos-1', 'tan-1', 'π', 'e'],
-    ['x^y', 'x^3', 'x^2', 'e^x', '10^x'],
-    ['y√x', '3√x', '√x', 'ln', 'log'],
-    ['(', ')', '1/x', '%', 'n!']
-  ];
-  
-  const basicButtons = [
-    ['7', '8', '9', '+', 'Back'],
-    ['4', '5', '6', '-', 'Ans'],
-    ['1', '2', '3', '*', 'M+'],
-    ['0', '.', 'EXP', '/', 'M-'],
-    ['±', 'RND', 'AC', '=', 'MR']
-  ];
+  // Reorganized buttons with better grouping
+  // Advanced scientific functions
+  const scientificRowOne = ['sin', 'cos', 'tan', angleMode === 'deg' ? 'Rad' : 'Deg'];
+  const scientificRowTwo = ['sin-1', 'cos-1', 'tan-1', 'π', 'e'];
+  const scientificRowThree = ['x^2', 'x^3', 'x^y', '√x', 'ʸ√x'];
+  const scientificRowFour = ['log', 'ln', 'e^x', '10^x', 'n!'];
+  const scientificRowFive = ['(', ')', '1/x', '%', 'EXP'];
 
   return (
-    <Card className="w-full max-w-md shadow-lg">
-      <CardContent className="p-4">
+    <Card className="w-full max-w-md shadow-2xl bg-gradient-to-br from-card/90 to-background/50 backdrop-blur-sm border border-primary/10 rounded-xl overflow-hidden">
+      <CardContent className="p-6">
         <CalculatorDisplay 
           expression={expression} 
           result={result} 
@@ -267,11 +258,11 @@ const Calculator: React.FC = () => {
           angleMode={angleMode} 
         />
         
-        <div className="grid grid-cols-4 gap-2">
-          {/* Scientific functions - only shown on larger screens or toggled view */}
+        <div className="grid grid-cols-5 gap-2 mt-4">
+          {/* Scientific buttons */}
           {!isMobile && (
             <>
-              {scientificButtons.map((row, rowIndex) => (
+              {[scientificRowOne, scientificRowTwo, scientificRowThree, scientificRowFour, scientificRowFive].map((row, rowIndex) => (
                 <React.Fragment key={`sci-row-${rowIndex}`}>
                   {row.map((btn) => (
                     <CalculatorButton
@@ -279,10 +270,18 @@ const Calculator: React.FC = () => {
                       value={btn}
                       onClick={handleButtonClick}
                       buttonType={
-                        ['sin', 'cos', 'tan', 'sin-1', 'cos-1', 'tan-1', 'log', 'ln'].includes(btn) 
+                        ['sin', 'cos', 'tan', 'sin-1', 'cos-1', 'tan-1'].includes(btn) 
                           ? 'function' 
                           : ['Deg', 'Rad'].includes(btn) 
                           ? btn === (angleMode === 'deg' ? 'Deg' : 'Rad') ? 'active' : 'toggle' 
+                          : ['π', 'e'].includes(btn)
+                          ? 'constant'
+                          : ['log', 'ln'].includes(btn)
+                          ? 'function'
+                          : ['(', ')'].includes(btn)
+                          ? 'parenthesis'
+                          : ['e^x', '10^x'].includes(btn)
+                          ? 'function'
                           : 'operator'
                       }
                     />
@@ -291,26 +290,38 @@ const Calculator: React.FC = () => {
               ))}
             </>
           )}
+
+          {/* Memory row */}
+          <CalculatorButton value="AC" onClick={handleButtonClick} buttonType="control" />
+          <CalculatorButton value="Back" onClick={handleButtonClick} buttonType="control" />
+          <CalculatorButton value="M+" onClick={handleButtonClick} buttonType="memory" />
+          <CalculatorButton value="M-" onClick={handleButtonClick} buttonType="memory" />
+          <CalculatorButton value="MR" onClick={handleButtonClick} buttonType="memory" />
+
+          {/* Digits and operations - organized with digits on left */}
+          <CalculatorButton value="7" onClick={handleButtonClick} buttonType="digit" />
+          <CalculatorButton value="8" onClick={handleButtonClick} buttonType="digit" />
+          <CalculatorButton value="9" onClick={handleButtonClick} buttonType="digit" />
+          <CalculatorButton value="/" onClick={handleButtonClick} buttonType="operator" />
+          <CalculatorButton value="RND" onClick={handleButtonClick} buttonType="function" />
           
-          {/* Basic calculator buttons */}
-          {basicButtons.map((row, rowIndex) => (
-            <React.Fragment key={`basic-row-${rowIndex}`}>
-              {row.map((btn) => (
-                <CalculatorButton
-                  key={`basic-${btn}`}
-                  value={btn}
-                  onClick={handleButtonClick}
-                  buttonType={
-                    btn === '=' ? 'equals' : 
-                    ['Back', 'AC', 'RND', '±'].includes(btn) ? 'control' :
-                    ['Ans', 'M+', 'M-', 'MR'].includes(btn) ? 'memory' :
-                    ['+', '-', '*', '/', '^', 'EXP'].includes(btn) ? 'operator' : 
-                    'normal'
-                  }
-                />
-              ))}
-            </React.Fragment>
-          ))}
+          <CalculatorButton value="4" onClick={handleButtonClick} buttonType="digit" />
+          <CalculatorButton value="5" onClick={handleButtonClick} buttonType="digit" />
+          <CalculatorButton value="6" onClick={handleButtonClick} buttonType="digit" />
+          <CalculatorButton value="*" onClick={handleButtonClick} buttonType="operator" />
+          <CalculatorButton value="Ans" onClick={handleButtonClick} buttonType="memory" />
+          
+          <CalculatorButton value="1" onClick={handleButtonClick} buttonType="digit" />
+          <CalculatorButton value="2" onClick={handleButtonClick} buttonType="digit" />
+          <CalculatorButton value="3" onClick={handleButtonClick} buttonType="digit" />
+          <CalculatorButton value="-" onClick={handleButtonClick} buttonType="operator" />
+          <CalculatorButton value="±" onClick={handleButtonClick} buttonType="operator" />
+          
+          <CalculatorButton value="0" onClick={handleButtonClick} buttonType="digit" />
+          <CalculatorButton value="." onClick={handleButtonClick} buttonType="digit" />
+          <CalculatorButton value="%" onClick={handleButtonClick} buttonType="operator" />
+          <CalculatorButton value="+" onClick={handleButtonClick} buttonType="operator" />
+          <CalculatorButton value="=" onClick={handleButtonClick} buttonType="equals" />
         </div>
       </CardContent>
     </Card>
