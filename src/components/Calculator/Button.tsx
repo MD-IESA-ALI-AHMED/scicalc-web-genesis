@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 interface CalculatorButtonProps {
   value: string;
   onClick: (value: string) => void;
-  buttonType?: 'normal' | 'operator' | 'function' | 'equals';
+  buttonType?: 'normal' | 'operator' | 'function' | 'equals' | 'control' | 'memory' | 'toggle' | 'active';
   className?: string;
   disabled?: boolean;
 }
@@ -26,6 +26,14 @@ const CalculatorButton: React.FC<CalculatorButtonProps> = ({
         return 'outline';
       case 'equals':
         return 'default';
+      case 'control':
+        return 'destructive';
+      case 'memory':
+        return 'outline';
+      case 'toggle':
+        return 'ghost';
+      case 'active':
+        return 'default';
       default:
         return 'ghost';
     }
@@ -37,9 +45,11 @@ const CalculatorButton: React.FC<CalculatorButtonProps> = ({
       onClick={() => onClick(value)}
       disabled={disabled}
       className={cn(
-        'text-lg font-medium h-14 w-full',
+        'text-sm sm:text-base font-medium h-12 w-full',
         {
           'bg-primary text-primary-foreground hover:bg-primary/90': buttonType === 'equals',
+          'bg-blue-500 text-white hover:bg-blue-600': buttonType === 'active',
+          'bg-muted text-muted-foreground hover:bg-muted/90': buttonType === 'toggle',
         },
         className
       )}

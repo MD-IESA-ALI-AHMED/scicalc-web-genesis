@@ -10,14 +10,42 @@ import { useIsMobile } from '@/hooks/use-mobile';
 const safeEval = (expression: string): { result: string; error: string | null } => {
   if (!expression) return { result: '', error: null };
   try {
-    // For now, we'll use a simple eval. In a production app, you'd use Math.js here
-    // This is just for demonstration purposes
-    // eslint-disable-next-line no-eval
-    const result = eval(expression.replace(/sin|cos|tan|log|ln/g, 'Math.$&')
+    // Replace special function names with their Math equivalents
+    let sanitizedExpression = expression
+      .replace(/sin\(/g, 'Math.sin(')
+      .replace(/cos\(/g, 'Math.cos(')
+      .replace(/tan\(/g, 'Math.tan(')
+      .replace(/asin\(/g, 'Math.asin(')
+      .replace(/acos\(/g, 'Math.acos(')
+      .replace(/atan\(/g, 'Math.atan(')
+      .replace(/log\(/g, 'Math.log10(')
+      .replace(/ln\(/g, 'Math.log(')
       .replace(/π/g, 'Math.PI')
-      .replace(/e(?![a-zA-Z])/g, 'Math.E'));
+      .replace(/e(?![a-zA-Z0-9])/g, 'Math.E')
+      .replace(/\^/g, '**')
+      .replace(/√\(/g, 'Math.sqrt(')
+      .replace(/√([0-9]+)/g, 'Math.sqrt($1)')
+      .replace(/(\d+)!/g, 'factorial($1)');
+      
+    // Define factorial function
+    const factorial = (n: number): number => {
+      if (n <= 1) return 1;
+      return n * factorial(n - 1);
+    };
+
+    // Evaluate the sanitized expression
+    // eslint-disable-next-line no-eval
+    const result = eval(`
+      const factorial = (n) => {
+        if (n <= 1) return 1;
+        return n * factorial(n - 1);
+      };
+      ${sanitizedExpression}
+    `);
+    
     return { result: String(result), error: null };
   } catch (e) {
+    console.error("Calculation error:", e);
     return { result: '', error: 'Invalid expression' };
   }
 };
@@ -26,6 +54,7 @@ const Calculator: React.FC = () => {
   const [expression, setExpression] = useState('');
   const [result, setResult] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [angleMode, setAngleMode] = useState<'deg' | 'rad'>('deg');
   const isMobile = useIsMobile();
 
   const handleButtonClick = (value: string) => {
@@ -34,7 +63,22 @@ const Calculator: React.FC = () => {
     switch (value) {
       case '=':
         try {
-          const { result: calculatedResult, error: evalError } = safeEval(expression);
+          let processedExpression = expression;
+          
+          // Convert degrees to radians for trigonometric functions if in degree mode
+          if (angleMode === 'deg') {
+            // Find sin, cos, tan calls and convert their arguments
+            processedExpression = processedExpression
+              .replace(/sin\(([^)]+)\)/g, (_, arg) => `sin((${arg}) * Math.PI / 180)`)
+              .replace(/cos\(([^)]+)\)/g, (_, arg) => `cos((${arg}) * Math.PI / 180)`)
+              .replace(/tan\(([^)]+)\)/g, (_, arg) => `tan((${arg}) * Math.PI / 180)`)
+              .replace(/asin\(([^)]+)\)/g, (_, arg) => `asin(${arg}) * 180 / Math.PI`)
+              .replace(/acos\(([^)]+)\)/g, (_, arg) => `acos(${arg}) * 180 / Math.PI`)
+              .replace(/atan\(([^)]+)\)/g, (_, arg) => `atan(${arg}) * 180 / Math.PI`);
+          }
+          
+          const { result: calculatedResult, error: evalError } = safeEval(processedExpression);
+          
           if (evalError) {
             setError(evalError);
             toast({
@@ -47,6 +91,7 @@ const Calculator: React.FC = () => {
             // In a real app, you would save to history here
           }
         } catch (e) {
+          console.error("Error calculating result:", e);
           setError('Error calculating result');
           toast({
             variant: "destructive",
@@ -56,36 +101,171 @@ const Calculator: React.FC = () => {
         }
         break;
       case 'C':
+      case 'AC':
         setExpression('');
         setResult('');
         setError(null);
         break;
       case '⌫':
+      case 'Back':
         setExpression(expression.slice(0, -1));
+        break;
+      case 'Ans':
+        if (result) {
+          setExpression(expression + result);
+        }
+        break;
+      case 'M+':
+        // Add current result to memory (would require memory state)
+        break;
+      case 'M-':
+        // Subtract current result from memory (would require memory state)
+        break;
+      case 'MR':
+        // Recall memory (would require memory state)
+        break;
+      case 'sin':
+      case 'cos':
+      case 'tan':
+      case 'log':
+      case 'ln':
+        setExpression(expression + value + '(');
+        break;
+      case 'sin⁻¹':
+      case 'sin-1':
+        setExpression(expression + 'asin(');
+        break;
+      case 'cos⁻¹':
+      case 'cos-1':
+        setExpression(expression + 'acos(');
+        break;
+      case 'tan⁻¹':
+      case 'tan-1':
+        setExpression(expression + 'atan(');
+        break;
+      case 'x²':
+      case 'x^2':
+        setExpression(expression + '^2');
+        break;
+      case 'x³':
+      case 'x^3':
+        setExpression(expression + '^3');
+        break;
+      case 'xʸ':
+      case 'x^y':
+        setExpression(expression + '^');
+        break;
+      case '√x':
+        setExpression(expression + '√(');
+        break;
+      case 'ʸ√x':
+      case '3√x':
+        setExpression(expression + '^(1/3)');
+        break;
+      case 'eˣ':
+      case 'e^x':
+        setExpression(expression + 'e^');
+        break;
+      case '10ˣ':
+      case '10^x':
+        setExpression(expression + '10^');
+        break;
+      case '1/x':
+        setExpression(expression + '1/');
+        break;
+      case '%':
+        setExpression(expression + '/100');
+        break;
+      case 'π':
+      case 'pi':
+        setExpression(expression + 'π');
+        break;
+      case 'e':
+        setExpression(expression + 'e');
+        break;
+      case 'DEG':
+      case 'RAD':
+      case 'Deg':
+      case 'Rad':
+        setAngleMode(value.toLowerCase() === 'deg' || value.toLowerCase() === 'deg' ? 'deg' : 'rad');
+        break;
+      case '.':
+        // Ensure we don't add multiple decimal points to the same number
+        if (!expression || /[^0-9]$/.test(expression) || !expression.split(/[^0-9.]/).pop()?.includes('.')) {
+          setExpression(expression + value);
+        }
+        break;
+      case 'n!':
+        setExpression(expression + '!');
+        break;
+      case 'RND':
+        setExpression(expression + Math.random().toFixed(4));
+        break;
+      case '±':
+        // Toggle sign of the last number
+        if (expression) {
+          // Find the last number in the expression
+          const match = expression.match(/[0-9.]+$/);
+          if (match) {
+            const lastNumber = match[0];
+            const lastNumberIndex = expression.lastIndexOf(lastNumber);
+            const isNegative = expression[lastNumberIndex - 1] === '-';
+            const isPartOfOperator = lastNumberIndex > 0 && 
+                                    ['+', '*', '/', '('].includes(expression[lastNumberIndex - 2]);
+            
+            if (isNegative && isPartOfOperator) {
+              // Remove the negative sign
+              setExpression(expression.substring(0, lastNumberIndex - 1) + expression.substring(lastNumberIndex));
+            } else if (lastNumberIndex > 0) {
+              // Insert a negative sign
+              setExpression(expression.substring(0, lastNumberIndex) + '-' + expression.substring(lastNumberIndex));
+            } else {
+              // Number is at the start of the expression
+              setExpression('-' + expression);
+            }
+          } else {
+            // No number found, toggle the overall expression
+            if (expression[0] === '-') {
+              setExpression(expression.substring(1));
+            } else {
+              setExpression('-' + expression);
+            }
+          }
+        }
+        break;
+      case 'EXP':
+        setExpression(expression + 'e+');
         break;
       default:
         setExpression(expression + value);
     }
   };
   
-  const basicButtons = [
-    ['7', '8', '9', '/'],
-    ['4', '5', '6', '*'],
-    ['1', '2', '3', '-'],
-    ['0', '.', '=', '+']
+  const scientificButtons = [
+    ['sin', 'cos', 'tan', angleMode === 'deg' ? 'Rad' : 'Deg'],
+    ['sin-1', 'cos-1', 'tan-1', 'π', 'e'],
+    ['x^y', 'x^3', 'x^2', 'e^x', '10^x'],
+    ['y√x', '3√x', '√x', 'ln', 'log'],
+    ['(', ')', '1/x', '%', 'n!']
   ];
   
-  const scientificButtons = [
-    ['sin', 'cos', 'tan'],
-    ['log', 'ln', 'e'],
-    ['(', ')', 'π'],
-    ['C', '⌫', '^']
+  const basicButtons = [
+    ['7', '8', '9', '+', 'Back'],
+    ['4', '5', '6', '-', 'Ans'],
+    ['1', '2', '3', '*', 'M+'],
+    ['0', '.', 'EXP', '/', 'M-'],
+    ['±', 'RND', 'AC', '=', 'MR']
   ];
 
   return (
     <Card className="w-full max-w-md shadow-lg">
       <CardContent className="p-4">
-        <CalculatorDisplay expression={expression} result={result} error={error || undefined} />
+        <CalculatorDisplay 
+          expression={expression} 
+          result={result} 
+          error={error || undefined} 
+          angleMode={angleMode} 
+        />
         
         <div className="grid grid-cols-4 gap-2">
           {/* Scientific functions - only shown on larger screens or toggled view */}
@@ -98,7 +278,13 @@ const Calculator: React.FC = () => {
                       key={`sci-${btn}`}
                       value={btn}
                       onClick={handleButtonClick}
-                      buttonType={['sin', 'cos', 'tan', 'log', 'ln'].includes(btn) ? 'function' : 'operator'}
+                      buttonType={
+                        ['sin', 'cos', 'tan', 'sin-1', 'cos-1', 'tan-1', 'log', 'ln'].includes(btn) 
+                          ? 'function' 
+                          : ['Deg', 'Rad'].includes(btn) 
+                          ? btn === (angleMode === 'deg' ? 'Deg' : 'Rad') ? 'active' : 'toggle' 
+                          : 'operator'
+                      }
                     />
                   ))}
                 </React.Fragment>
@@ -116,7 +302,10 @@ const Calculator: React.FC = () => {
                   onClick={handleButtonClick}
                   buttonType={
                     btn === '=' ? 'equals' : 
-                    ['+', '-', '*', '/', '^'].includes(btn) ? 'operator' : 'normal'
+                    ['Back', 'AC', 'RND', '±'].includes(btn) ? 'control' :
+                    ['Ans', 'M+', 'M-', 'MR'].includes(btn) ? 'memory' :
+                    ['+', '-', '*', '/', '^', 'EXP'].includes(btn) ? 'operator' : 
+                    'normal'
                   }
                 />
               ))}
